@@ -1,19 +1,44 @@
 import React from "react";
-import { View, Text, StyleSheet, Image } from "react-native";
-import NavigationBars from "../components/NavigationBars";
+import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import NavigationBars from "../../components/NavigationBars";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const FavoriteScreen = ({ navigation }) => {
+  const router = useRouter();
+
+  const handlePetClick = async (petData) => {
+    try {
+      await AsyncStorage.setItem("selectedPet", JSON.stringify(petData));
+      router.push("/petProfile");
+    } catch (error) {
+      console.error("Erro ao salvar os dados no AsyncStorage:", error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <NavigationBars navigation={navigation}></NavigationBars>
       <Text style={styles.petText}>Meus Favoritos</Text>
       <View style={styles.containerDog}>
         <View style={styles.viewDog}>
-          <Image
-            source={require("../assets/images/Mel.png")}
-            style={styles.image}
-          />
+          <TouchableOpacity
+            onPress={() =>
+              handlePetClick({
+                name: "Mel",
+                age: "07",
+                gender: "Fem",
+                race: "Dachshund",
+                contact: "(11) 123456789",
+              })
+            }
+          >
+            <Image
+              source={require("../../assets/images/Mel.png")}
+              style={styles.image}
+            />
+          </TouchableOpacity>
           <View style={styles.viewNameIcon}>
             <Text style={styles.textName}>Mel</Text>
             <Ionicons
