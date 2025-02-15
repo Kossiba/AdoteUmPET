@@ -22,6 +22,7 @@ import {
 import NavigationBars from "../../components/NavigationBars";
 import { db } from "../../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Picker } from "@react-native-picker/picker";
 
 const IMGUR_CLIENT_ID = "ec50a5168850e14";
 
@@ -33,6 +34,8 @@ const SignUpPetScreen = ({ navigation }) => {
   const [idade, setIdade] = useState("");
   const [numeroContato, setNumeroContato] = useState("");
   const [raca, setRaca] = useState("");
+  const [cidade, setCidade] = useState("");
+  const [estado, setEstado] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [registering, setRegistering] = useState(false);
 
@@ -119,7 +122,7 @@ const SignUpPetScreen = ({ navigation }) => {
 
       if (!userId) {
         console.log("Erro: Ao buscar id do usuario logado.");
-        return; 
+        return;
       }
 
       return parseInt(userId);
@@ -134,8 +137,8 @@ const SignUpPetScreen = ({ navigation }) => {
       const idPet = await getLastId();
       const docRef = doc(db, "usarioPets", `${idUsuario}_${idPet}`);
       await setDoc(docRef, {
-        idpet: idPet,
-        idusuario: idUsuario,
+        idpet: String(idPet),
+        idusuario: String(idUsuario),
       });
     } catch (err) {
       console.log("Erro criar usuario pet: ", err);
@@ -146,6 +149,8 @@ const SignUpPetScreen = ({ navigation }) => {
     if (
       !nome ||
       !genero ||
+      !cidade ||
+      !estado ||
       !idade ||
       !numeroContato ||
       !raca ||
@@ -176,11 +181,13 @@ const SignUpPetScreen = ({ navigation }) => {
 
       const docRef = doc(db, "pets", String(newId));
       await setDoc(docRef, {
-        id: newId,
+        id: String(newId),
         nome,
+        cidade,
+        estado,
         genero,
-        idade: parseInt(idade),
-        numeroContato,
+        idade: String(idade),
+        numeroContato: String(numeroContato),
         raca,
         imageUrl,
       });
@@ -193,6 +200,8 @@ const SignUpPetScreen = ({ navigation }) => {
       setIdade("");
       setNumeroContato("");
       setRaca("");
+      setCidade("");
+      setEstado("");
       setImageUri(imageUrl);
       setSelectedImage(null);
     } catch (err) {
@@ -233,30 +242,58 @@ const SignUpPetScreen = ({ navigation }) => {
         />
         <TextInput
           style={styles.textInput}
-          placeholder="Idade"
+          placeholder="Estado"
+          value={estado}
+          onChangeText={setEstado}
+        />
+        <TextInput
+          style={styles.textInput}
+          placeholder="Cidade"
+          value={cidade}
+          onChangeText={setCidade}
+        />
+        <TextInput
+          style={styles.textInput}
+          placeholder="Idade do PET"
           keyboardType="numeric"
+          inputMode="numeric"
           value={idade}
-          onChangeText={setIdade}
+          onChangeText={(text) => {
+            const numericText = text.replace(/[^0-9]/g, "");
+            if (numericText.length <= 2) {
+              setIdade(numericText);
+            }
+          }}
         />
         <TextInput
           style={styles.textInput}
           placeholder="N° para contato"
           keyboardType="phone-pad"
           value={numeroContato}
-          onChangeText={setNumeroContato}
+          maxLength={11}
+          onChangeText={(text) => {
+            const numericText = text.replace(/[^0-9]/g, "");
+            setNumeroContato(numericText);
+          }}
         />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Gênero"
-          value={genero}
-          onChangeText={setGenero}
-        />
+        <Text style={styles.label}>Selecione o Gênero:</Text>
+        <Picker
+          selectedValue={genero}
+          onValueChange={(itemValue) => setGenero(itemValue)}
+          style={styles.picker}
+        >
+          <Picker.Item label="Selecione..." value="" />
+          <Picker.Item label="Macho" value="macho" />
+          <Picker.Item label="Fêmea" value="femea" />
+        </Picker>
         <TouchableOpacity
           style={[
             styles.button,
             !nome ||
             !genero ||
             !idade ||
+            !cidade ||
+            !estado ||
             !numeroContato ||
             !raca ||
             !selectedImage
@@ -267,6 +304,8 @@ const SignUpPetScreen = ({ navigation }) => {
           disabled={
             !nome ||
             !genero ||
+            !cidade ||
+            !estado ||
             !idade ||
             !numeroContato ||
             !raca ||
