@@ -14,6 +14,12 @@ export default function Layout() {
         }}
       />
       <Drawer.Screen
+        name="screens/myPets"
+        options={{
+          drawerLabel: "Meus Pets",
+        }}
+      />
+      <Drawer.Screen
         name="screens/favorite"
         options={{
           drawerLabel: "Meus Favoritos",
@@ -22,7 +28,7 @@ export default function Layout() {
       <Drawer.Screen
         name="screens/signUpPet"
         options={{
-          drawerLabel: "Adotar pet",
+          drawerLabel: "Adoar pet",
         }}
       />
       <Drawer.Screen
