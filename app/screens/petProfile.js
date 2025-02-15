@@ -1,57 +1,104 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
+  StyleSheet,
   Image,
   TouchableOpacity,
-  StyleSheet,
   Alert,
 } from "react-native";
 import NavigationBars from "../../components/NavigationBars";
+import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   collection,
   query,
   getDocs,
   where,
+  doc,
+  getDoc,
+  deleteDoc,
 } from "firebase/firestore";
-import { useRouter } from "expo-router";
 import { db } from "../../firebaseConfig";
+import { useFocusEffect } from "@react-navigation/native";
 
 const PetProfileScreen = () => {
   const [petData, setPetData] = useState(null);
+  const [isUserPet, setIsUserPet] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchPetData = async () => {
-      try {
-        const petIdStorage = await AsyncStorage.getItem("petId");
+  const fetchData = async () => {
+    try {
+      const petIdStorage = await AsyncStorage.getItem("petId");
+      const userIdStorage = await AsyncStorage.getItem("userId");
 
-        if (!petIdStorage) {
-          Alert.alert("Erro", "Nenhum ID de pet encontrado.");
-          router.push("/screens/petList");
-          return;
-        }
-
-        const petCollection = collection(db, "pets");
-        const q = query(petCollection, where("id", "==", parseInt(petIdStorage)));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-          Alert.alert("Erro", "Pet não encontrado.");
-          router.push("/screens/petList");
-          return;
-        }
-
-        const pet = querySnapshot.docs[0].data();
-        setPetData(pet);
-      } catch (error) {
-        console.error("Erro ao recuperar os dados:", error);
+      if (!petIdStorage) {
+        Alert.alert("Erro", "Nenhum ID de pet encontrado.");
+        router.push("/screens/petList");
+        return;
       }
-    };
 
-    fetchPetData();
-  }, []);
+      const petCollection = collection(db, "pets");
+      const q = query(petCollection, where("id", "==", String(petIdStorage)));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        Alert.alert("Erro", "Pet não encontrado.");
+        router.push("/screens/petList");
+        return;
+      }
+
+      const pet = querySnapshot.docs[0].data();
+      setPetData(pet);
+
+      if (userIdStorage) {
+        const userPetDocRef = doc(db, "usarioPets", `${userIdStorage}_${petIdStorage}`);
+        const userPetDocSnap = await getDoc(userPetDocRef);
+        setIsUserPet(userPetDocSnap.exists());
+      }
+    } catch (error) {
+      console.error("Erro ao recuperar os dados:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+      return () => {};
+    }, [])
+  );
+
+  const handleDeletePet = async () => {
+    try {
+      const petIdStorage = await AsyncStorage.getItem("petId");
+      const userIdStorage = await AsyncStorage.getItem("userId");
+
+      if (!petIdStorage || !userIdStorage) {
+        Alert.alert("Erro", "Não foi possível obter IDs do pet ou usuário.");
+        return;
+      }
+
+      const userPetDocRef = doc(db, "usarioPets", `${userIdStorage}_${petIdStorage}`);
+      await deleteDoc(userPetDocRef);
+
+      const petDocRef = doc(db, "pets", petIdStorage);
+      await deleteDoc(petDocRef);
+
+      Alert.alert("Sucesso", "Pet excluído com sucesso!");
+      router.push("/screens/petList");
+    } catch (error) {
+      console.error("Erro ao excluir pet:", error);
+      Alert.alert("Erro", "Não foi possível excluir o pet.");
+    }
+  };
+
+  const formatPhoneNumber = (number) => {
+    if (!number || number.length !== 11) return number;
+    const ddd = number.slice(0, 2);
+    const part1 = number.slice(2, 7);
+    const part2 = number.slice(7);
+    return `(${ddd}) ${part1}-${part2}`;
+  };
 
   return (
     <View style={styles.container}>
@@ -60,7 +107,9 @@ const PetProfileScreen = () => {
         <>
           <Image source={{ uri: petData.imageUrl }} style={styles.image} />
           <Text style={styles.racaText}>{petData.raca}</Text>
-          <Text style={styles.contatoText}>{petData.numeroContato}</Text>
+          <Text style={styles.contatoText}>
+            Contato: {formatPhoneNumber(petData.numeroContato)}
+          </Text>
           <View style={styles.infoView}>
             <Text style={styles.infoTexto}>{petData.nome}</Text>
             <Text style={styles.infoTexto}>|</Text>
@@ -68,12 +117,17 @@ const PetProfileScreen = () => {
             <Text style={styles.infoTexto}>|</Text>
             <Text style={styles.infoTexto}>{petData.genero}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => alert("Em Construção BB! Au Au!")}
-          >
-            <Text style={styles.buttonText}>Chama no Zap BB</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonsContainer}>
+            {isUserPet ? (
+              <TouchableOpacity style={styles.button} onPress={handleDeletePet}>
+                <Text style={styles.buttonText}>Excluir pet</Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.infoTexto}>
+                Este pet não pertence a você.
+              </Text>
+            )}
+          </View>
         </>
       ) : (
         <Text style={styles.loadingText}>Carregando informações do pet...</Text>
@@ -109,25 +163,39 @@ const styles = StyleSheet.create({
   infoView: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 0,
+    marginTop: 50,
+    paddingHorizontal: 20,
   },
   infoTexto: {
-    marginTop: 50,
     fontSize: 18,
     fontWeight: "400",
     fontFamily: "inter",
+    color: "black",
+  },
+  buttonsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 30,
+    paddingHorizontal: 20,
   },
   button: {
-    margin: "auto",
     backgroundColor: "white",
     borderRadius: 20,
     borderColor: "black",
     borderWidth: 1,
-    height: "5%",
-    width: "50%",
+    width: "60%",
+    justifyContent: "center",
+    alignItems: "center",
+    height: 50,
   },
   buttonText: {
+    fontSize: 16,
+    fontWeight: "400",
+    fontFamily: "inter",
+  },
+  loadingText: {
     textAlign: "center",
+    marginTop: 50,
     fontSize: 18,
     fontWeight: "400",
     fontFamily: "inter",
