@@ -34,7 +34,6 @@ const LoginScreen = ({ navigation }) => {
 
         if (userData.password === password) {
           await AsyncStorage.setItem("userId", userData.id.toString());
-          console.log("Usuário salvo no AsyncStorage:", userData.id);
           Alert.alert("Sucesso", "Login realizado com sucesso!");
           router.push("/screens/petList");
         } else {
