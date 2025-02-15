@@ -1,40 +1,51 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import React, { useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
 import NavigationBars from "../../components/NavigationBars";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { collection, query, getDocs, where } from "firebase/firestore";
+import { collection, query, getDocs } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
+import { useFocusEffect } from "@react-navigation/native";
+
 const PetListScreen = ({ navigation }) => {
   const router = useRouter();
   const [petData, setPetData] = useState([]);
-  useEffect(() => {
-    const fetchPetsData = async () => {
-      try {
-        const petsCollection = collection(db, "pets");
-        const q = query(petsCollection);
-        const querySnapshot = await getDocs(q);
 
-        if (querySnapshot.empty) {
-          Alert.alert("Erro");
-          router.push("/screens/home");
-          return;
-        }
+  const fetchPetsData = async () => {
+    try {
+      const petsCollection = collection(db, "pets");
+      const q = query(petsCollection);
+      const querySnapshot = await getDocs(q);
 
-        const pets = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-
-        setPetData(pets);
-      } catch (error) {
-        console.error("Erro ao recuperar os dados:", error);
+      if (querySnapshot.empty) {
+        Alert.alert("Erro", "Nenhum pet encontrado.");
+        router.push("/screens/home");
+        return;
       }
-    };
 
-    fetchPetsData();
-  }, []);
+      const pets = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setPetData(pets);
+    } catch (error) {
+      console.error("Erro ao recuperar os dados:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchPetsData();
+    }, [])
+  );
 
   const handlePetClick = async (petId) => {
     try {
@@ -58,12 +69,14 @@ const PetListScreen = ({ navigation }) => {
             <View style={styles.viewNameIcon}>
               <Text style={styles.textName}>{pet.nome}</Text>
               <Ionicons
-                name={pet.genero === "Fem" ? "female-outline" : "male-outline"}
+                name={pet.genero === "macho" ? "male-outline" : "female-outline"}
                 size={20}
                 color="black"
               />
             </View>
-            <Text style={styles.textAdress}>Dois Vizinhos, PR</Text>
+            <Text style={styles.textAdress}>
+              {`${pet.cidade || "Cidade desconhecida"}, ${pet.estado || "Estado desconhecido"}`}
+            </Text>
           </View>
         ))}
       </View>
@@ -87,21 +100,21 @@ const styles = StyleSheet.create({
   containerDog: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-around", 
+    justifyContent: "space-around",
     paddingHorizontal: 10,
   },
   viewDog: {
     backgroundColor: "#998181",
-    width: "45%", 
+    width: "45%",
     height: 230,
     marginBottom: 20,
-    borderRadius: 10, 
-    overflow: "hidden", 
+    borderRadius: 10,
+    overflow: "hidden",
   },
   viewNameIcon: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between", 
+    justifyContent: "space-between",
     paddingHorizontal: 10,
     marginTop: 5,
   },
